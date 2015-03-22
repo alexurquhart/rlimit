@@ -84,12 +84,14 @@ func NewRateLimiter(tickInterval time.Duration, limit uint, resetInterval time.D
 	return l
 }
 
+// Stops the internal ticker and closes the Tick channel
 func (r *RateLimiter) Stop() {
 	r.ticker.Stop()
 	close(r.stop)
 }
 
-// Blocks until the next tick
+// Blocks until the next tick. Returns the time of the tick, and an error
+// if the rate limiter has been stopped/the tick channel has closed
 func (r *RateLimiter) Wait() (time.Time, error) {
 	if t, ok := <-r.Tick; ok {
 		r.Count()
@@ -106,7 +108,8 @@ func (r *RateLimiter) Count() {
 	r.RUnlock()
 }
 
-// Returns the number of ticks left until waiting for a reset
+// Returns the number of ticks left until the limiter blocks and
+// waits for the reset timer.
 func (r *RateLimiter) LimitLeft() uint {
 	return r.limitLeft
 }
