@@ -5,7 +5,7 @@ The RateLimiter struct works by using a combination of a ticker that ticks at a 
 rate, and a specified limit on the number of ticks allowed before waiting for a reset.
 This was developed because an API that my application was consuming allowed querying
 at a rate of 50 calls/min, up to a maximum of 1000 calls per hour, and I needed a way to
-create long-running processes that could get the data as soon as possible without exceeding
+create long running processes that could query the data as soon as possible without exceeding
 the API's limits.
 
 ##Examples
@@ -25,12 +25,10 @@ func main() {
 	resetInterval := time.Duration(3) * time.Second
 	limiter := rlimit.NewRateLimiter(interval, 5, resetInterval)
 
-	now := time.Now()
-
 	// Make a bunch of API calls. The Wait() method will block until
 	// the appropriate time has passed.
 	for i := 0; i < 15; i++ {
-		now = time.Now()
+		now := time.Now()
 		_, err := limiter.Wait()
 		diff := time.Now().Sub(now)
 
@@ -55,7 +53,7 @@ Expensive API call blocked for: 249.985946ms
 Expensive API call blocked for: 249.982977ms
 Expensive API call blocked for: 249.996601ms
 Expensive API call blocked for: 249.966797ms
-Expensive API call blocked for: 2.000079886s	
+Expensive API call blocked for: 2.000079886s
 Expensive API call blocked for: 249.986876ms
 Expensive API call blocked for: 249.98135ms
 Expensive API call blocked for: 249.980088ms
