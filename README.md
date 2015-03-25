@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/alexurquhart/rlimit.svg?branch=master)](https://travis-ci.org/alexurquhart/rlimit)
+[![Build Status](https://travis-ci.org/alexurquhart/rlimit.svg?branch=master)](https://travis-ci.org/alexurquhart/rlimit) [![Godoc reference](https://godoc.org/github.com/alexurquhart/rlimit?status.svg)](https://godoc.org/github.com/alexurquhart/rlimit)
 #rlimit
 Package rlimit contains utilities to help with complex rate limiting scenarios.
 The RateLimiter struct works by using a combination of a ticker that ticks at a fixed
@@ -11,34 +11,24 @@ the API's limits.
 ##Examples
 Use the Wait() method to block until the next tick is reached.
 ```go
-package main
+// Create a new limiter that ticks every 250ms, limited to 5 times every 3 seconds
+interval := time.Duration(250) * time.Millisecond
+resetInterval := time.Duration(3) * time.Second
+limiter := rlimit.NewRateLimiter(interval, 5, resetInterval)
 
-import (
-	"fmt"
-	"github.com/alexurquhart/rlimit"
-	"time"
-)
+// Make a bunch of API calls. The Wait() method will block until
+// the appropriate time has passed.
+for i := 0; i < 15; i++ {
+	now := time.Now()
+	_, err := limiter.Wait()
+	diff := time.Now().Sub(now)
 
-func main() {
-	// Create a new limiter that ticks every 250ms, limited to 5 times every 3 seconds
-	interval := time.Duration(250) * time.Millisecond
-	resetInterval := time.Duration(3) * time.Second
-	limiter := rlimit.NewRateLimiter(interval, 5, resetInterval)
-
-	// Make a bunch of API calls. The Wait() method will block until
-	// the appropriate time has passed.
-	for i := 0; i < 15; i++ {
-		now := time.Now()
-		_, err := limiter.Wait()
-		diff := time.Now().Sub(now)
-
-		// Wait() will return an error when the limiter has been stopped
-		if err != nil {
-			fmt.Println("Rate Limiter Stopped: ", err)
-			break
-		}
-		fmt.Printf("Expensive API call blocked for: %s\n", diff)
+	// Wait() will return an error when the limiter has been stopped
+	if err != nil {
+		fmt.Println("Rate Limiter Stopped: ", err)
+		break
 	}
+	fmt.Printf("Expensive API call blocked for: %s\n", diff)
 }
 ```
 Outputs
