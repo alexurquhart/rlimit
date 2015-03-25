@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/alexurquhart/rlimit.svg?branch=master)](https://travis-ci.org/alexurquhart/rlimit)
+[![Build Status](https://travis-ci.org/alexurquhart/rlimit.svg?branch=master)](https://travis-ci.org/alexurquhart/rlimit) [![Godoc reference](https://godoc.org/github.com/alexurquhart/rlimit?status.svg)](https://godoc.org/github.com/alexurquhart/rlimit)
 #rlimit
 Package rlimit contains utilities to help with complex rate limiting scenarios.
 The RateLimiter struct works by using a combination of a ticker that ticks at a fixed
