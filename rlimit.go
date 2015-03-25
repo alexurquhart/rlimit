@@ -13,17 +13,8 @@ import (
 	"time"
 )
 
-type RateLimiter struct {
+type limits struct {
 	sync.RWMutex
-
-	// Ticker that will be set to tick at the given interval
-	ticker *time.Ticker
-
-	// Timer that will signal when the limits will be reset
-	resetTimer *time.Timer
-
-	// Interval that the limiter will tick at until it hits the limit
-	tickInterval time.Duration
 
 	// Maximum number of tick that will be allowed until
 	// the limiter needs to wait until a reset
@@ -34,9 +25,44 @@ type RateLimiter struct {
 
 	// The duration needed to pass before the limit is reset
 	resetInterval time.Duration
+}
+
+func (l *limits) SetLimitLeft(i uint) {
+	l.Lock()
+	l.limitLeft = i
+	l.Unlock()
+}
+
+func (l *limits) DecrLimitLeft() {
+	l.Lock()
+	l.limitLeft -= 1
+	l.Unlock()
+}
+
+func (l *limits) LimitLeft() uint {
+	l.RLock()
+	defer l.RUnlock()
+	return l.limitLeft
+}
+
+func (l *limits) ResetInterval() time.Duration {
+	l.RLock()
+	defer l.RUnlock()
+	return l.resetInterval
+}
+
+type RateLimiter struct {
+	// Ticker that will be set to tick at the given interval
+	ticker *time.Ticker
+
+	// Timer that will signal when the limits will be reset
+	resetTimer *time.Timer
 
 	// Channel to carry the stop event
 	stop chan bool
+
+	// Rate limit infomation - protected by a RWMutex
+	limits *limits
 
 	// Channel to carry tick events
 	Tick chan time.Time
@@ -44,15 +70,18 @@ type RateLimiter struct {
 
 // Creates a new rate limiter.
 func NewRateLimiter(tickInterval time.Duration, limit uint, resetInterval time.Duration) *RateLimiter {
-	l := &RateLimiter{
-		ticker:        time.NewTicker(tickInterval),
-		resetTimer:    time.NewTimer(resetInterval),
-		tickInterval:  tickInterval,
+	l := &limits{
 		limit:         limit,
 		limitLeft:     limit,
 		resetInterval: resetInterval,
-		stop:          make(chan bool),
-		Tick:          make(chan time.Time),
+	}
+
+	r := &RateLimiter{
+		ticker:     time.NewTicker(tickInterval),
+		resetTimer: time.NewTimer(resetInterval),
+		stop:       make(chan bool),
+		limits:     l,
+		Tick:       make(chan time.Time),
 	}
 
 	// Start a goroutine that manages the state
@@ -60,28 +89,25 @@ func NewRateLimiter(tickInterval time.Duration, limit uint, resetInterval time.D
 	go func() {
 		for {
 			select {
-			case t := <-l.ticker.C:
-				if l.limitLeft > 0 {
-					l.Tick <- t
+			case t := <-r.ticker.C:
+				if r.limits.LimitLeft() > 0 {
+					r.Tick <- t
 				} else {
-					l.RLock()
-
 					// Wait for the reset timer
-					<-l.resetTimer.C
+					<-r.resetTimer.C
 
 					// Reset the timer and the limit
-					l.resetTimer.Reset(l.resetInterval)
-					l.limitLeft = l.limit
-					l.RUnlock()
+					r.resetTimer.Reset(l.resetInterval)
+					r.limits.SetLimitLeft(r.limits.limit)
 				}
-			case <-l.stop:
-				close(l.Tick)
+			case <-r.stop:
+				close(r.Tick)
 				return
 			}
 		}
 	}()
 
-	return l
+	return r
 }
 
 // Stops the internal ticker and closes the Tick channel
@@ -103,13 +129,11 @@ func (r *RateLimiter) Wait() (time.Time, error) {
 
 // Decrements the limit left - not to be used when waiting for a tick using Wait()
 func (r *RateLimiter) Count() {
-	r.RLock()
-	r.limitLeft -= 1
-	r.RUnlock()
+	r.limits.DecrLimitLeft()
 }
 
 // Returns the number of ticks left until the limiter blocks and
 // waits for the reset timer.
 func (r *RateLimiter) LimitLeft() uint {
-	return r.limitLeft
+	return r.limits.LimitLeft()
 }
