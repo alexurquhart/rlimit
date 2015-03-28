@@ -12,7 +12,7 @@ the API's limits.
 Use the Wait() method to block until the next tick is reached.
 ```go
 // Create a new limiter that ticks every 250ms, limited to 5 times every 3 seconds
-limiter := rlimit.NewRateLimiter(time.Duration(250) * time.Millisecond, 5, time.Duration(3) * time.Second)
+limiter := rlimit.NewRateLimiter(250 * time.Millisecond, 5, 3 * time.Second)
 
 // Make a bunch of API calls. The Wait() method will block until
 // the appropriate time has passed.
